@@ -2,17 +2,21 @@
 
 BPL activities repository and messaging
 
-## Configuration
+## Development setup
 
+- `$ pipenv install --dev`
+- `postgres=# CREATE DATABASE hubble;`
+- `$ pipenv run alembic upgrade head`
 - create a `.env` file in the root directory
 
 Example:
 
 ```shell
-SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost:5432/hubble
+DATABASE_URI=postgresql://postgres:postgres@localhost:5432/hubble
 SQL_DEBUG=False
-USE_NULL_POOL=True
 RABBIT_URI='amqp://guest:guest@localhost:5672//'
+ROOT_LOG_LEVEL=DEBUG
+LOG_FORMATTER=json
 ```
 
-- `pipenv install --dev`
+- `$ pipenv run python -m app.cli activity-consumer`
