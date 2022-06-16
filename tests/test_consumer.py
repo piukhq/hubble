@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 @pytest.fixture(name="connection_and_exchange", scope="module")
 def fixture_connection_and_exchange() -> Generator:
     rmq_conn, exchange = get_connection_and_exchange(
-        rabbitmq_uri=settings.RABBIT_URI, message_exchange_name=f"{settings.MESSAGE_EXCHANGE}-test"
+        rabbitmq_uri=settings.RABBIT_DSN, message_exchange_name=f"{settings.MESSAGE_EXCHANGE}-test"
     )
     channel = rmq_conn.channel()
     exchange = exchange.bind(channel=channel)
