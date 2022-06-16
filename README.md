@@ -14,7 +14,7 @@ Example:
 ```shell
 DATABASE_URI=postgresql://postgres:postgres@localhost:5432/hubble
 SQL_DEBUG=False
-RABBIT_URI='amqp://guest:guest@localhost:5672//'
+RABBIT_DSN='amqp://guest:guest@localhost:5672//'
 ROOT_LOG_LEVEL=DEBUG
 LOG_FORMATTER=json
 ```
