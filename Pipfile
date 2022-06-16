@@ -18,6 +18,7 @@ kombu = "*"
 typer = "*"
 cosmos-message-lib = {version="*", index="pypi-cloud"}
 prettyprinter = "*"
+sentry-sdk = "*"
 
 [dev-packages]
 black = "*"
