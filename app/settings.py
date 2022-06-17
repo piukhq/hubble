@@ -8,7 +8,7 @@ from environs import Env
 env = Env()
 env.read_env()
 
-DATABASE_URI = env("DATABASE_URI")
+DATABASE_URI = env("DATABASE_URI").format(env("DATABASE_NAME", "hubble"))
 DATABASE_URI = f"{DATABASE_URI}_test" if any("pytest" in sv for sv in sys.argv) else DATABASE_URI
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_ENV = env("SENTRY_ENV", None)
