@@ -1,21 +1,15 @@
 import logging
 
-from typing import TYPE_CHECKING, Any, Generator, Type
+from typing import TYPE_CHECKING
 
 import psycopg2
 
-from amqp import Channel
+from cosmos_message_lib.consumer import AbstractMessageConsumer
 from cosmos_message_lib.schemas import ActivitySchema
-from kombu import Connection, Queue
-from kombu.mixins import ConsumerMixin
 from psycopg2.extras import Json
-from pydantic import ValidationError
-
-from app import settings
 
 if TYPE_CHECKING:
-    from kombu import Consumer as ConsumerCls
-    from kombu import Exchange
+    from kombu import Connection, Exchange
     from kombu.message import Message
     from psycopg2.pool import SimpleConnectionPool
 
@@ -24,42 +18,25 @@ logger = logging.getLogger(__name__)
 psycopg2.extensions.register_adapter(dict, Json)
 
 
-class ActivityConsumer(ConsumerMixin):
+class ActivityConsumer(AbstractMessageConsumer):
     def __init__(
         self,
-        rmq_conn: Connection,
+        rmq_conn: "Connection",
         exchange: "Exchange",
         pg_conn_pool: "SimpleConnectionPool",
-        message_queue_name: str = settings.MESSAGE_QUEUE_NAME,
+        *,
+        queue_name: str,
+        routing_key: str,
     ):
-        self.connection = rmq_conn
-        channel = rmq_conn.channel()
         self.pg_conn_pool = pg_conn_pool
-        exchange = exchange(channel)
-        exchange.declare()
-        queue = Queue(
-            message_queue_name,
-            durable=True,
-            exchange=exchange,
-            routing_key=settings.MESSAGE_ROUTING_KEY,
-        )
-        self.queue = queue(channel)
-        self.queue.declare()
-
-    def get_consumers(self, Consumer: Type["ConsumerCls"], channel: Channel) -> list:
-        return [
-            Consumer(queues=[self.queue], callbacks=[self.on_message], accept=["json"]),
-        ]
-
-    def consume(self, *args: Any, **kwargs: Any) -> Generator:
-        consume = self.connection.ensure(self.connection, super().consume)
-        return consume(*args, **kwargs)
+        super().__init__(rmq_conn, exchange, queue_name=queue_name, routing_key=routing_key, use_deadletter=True)
 
     def on_message(self, body: dict, message: "Message") -> None:
         try:
             activity = ActivitySchema(**body)
-        except ValidationError:
+        except Exception:  # pylint: disable=broad-except
             logger.exception("Could not consume message %s\nBody:\n%s", message, body)
+            message.reject()
         else:
             with self.pg_conn_pool.getconn() as conn:
                 try:
