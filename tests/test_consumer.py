@@ -7,6 +7,7 @@ import pytest
 
 from cosmos_message_lib.connection import get_connection_and_exchange
 from cosmos_message_lib.enums import ActivityType
+from cosmos_message_lib.producer import send_message
 from cosmos_message_lib.schemas import ActivitySchema
 from kombu import BrokerConnection, Exchange
 from psycopg2 import sql
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 @pytest.fixture(name="connection_and_exchange", scope="module")
 def fixture_connection_and_exchange() -> Generator:
     rmq_conn, exchange = get_connection_and_exchange(
-        rabbitmq_uri=settings.RABBIT_DSN, message_exchange_name=f"{settings.MESSAGE_EXCHANGE}-test"
+        rabbitmq_dsn=settings.RABBIT_DSN, message_exchange_name=f"{settings.MESSAGE_EXCHANGE}-test"
     )
     channel = rmq_conn.channel()
     exchange = exchange.bind(channel=channel)
@@ -42,20 +43,17 @@ def fixture_consumer(
 ) -> Generator:
     rmq_conn, exchange = connection_and_exchange
     activity_consumer = ActivityConsumer(
-        rmq_conn, exchange, pg_conn_pool, message_queue_name=f"{settings.MESSAGE_QUEUE_NAME}-test"
+        rmq_conn,
+        exchange,
+        pg_conn_pool,
+        queue_name=f"{settings.MESSAGE_QUEUE_NAME}-test",
+        routing_key=settings.MESSAGE_ROUTING_KEY,
     )
     yield activity_consumer
+    channel = rmq_conn.channel()
+    activity_consumer.deadletter_queue(channel).delete()
+    activity_consumer.deadletter_exchange(channel).delete()
     activity_consumer.queue.delete()
-
-
-def publish_message(rmq_conn: BrokerConnection, exchange: Exchange, data: dict) -> None:
-    with rmq_conn.Producer() as producer:
-        producer.publish(
-            ActivitySchema(**data).dict(),
-            exchange=exchange,
-            routing_key="activity.random",
-            declare=[exchange],
-        )
 
 
 def test_consumer(
@@ -68,24 +66,26 @@ def test_consumer(
     now = datetime.now(tz=timezone.utc)
     yesterday = now - timedelta(days=1)
     activity_identifier, user_id = str(uuid.uuid4()), str(uuid.uuid4())
-    data = {
-        "type": ActivityType.TRANSACTION_HISTORY,
-        "datetime": now,
-        "underlying_datetime": yesterday,
-        "summary": "Headline!",
-        "reasons": ["a reason", "another reason"],
-        "activity_identifier": activity_identifier,
-        "user_id": user_id,
-        "associated_value": "42",
-        "retailer": "asos",
-        "campaigns": ["ASOS_EXTRA"],
-        "data": {
-            "some": "data",
-            "such": "wow",
-        },
-    }
+    data = ActivitySchema(
+        **{
+            "type": ActivityType.TX_HISTORY,
+            "datetime": now,
+            "underlying_datetime": yesterday,
+            "summary": "Headline!",
+            "reasons": ["a reason", "another reason"],
+            "activity_identifier": activity_identifier,
+            "user_id": user_id,
+            "associated_value": "42",
+            "retailer": "asos",
+            "campaigns": ["ASOS_EXTRA"],
+            "data": {
+                "some": "data",
+                "such": "wow",
+            },
+        }
+    ).dict()
 
-    publish_message(rmq_conn, exchange, data)
+    send_message(rmq_conn, exchange, data, routing_key="activity.random")
     for _ in consumer.consume(limit=1):
         pass
 
@@ -95,7 +95,7 @@ def test_consumer(
 
     db_dict_cursor.execute(sql.SQL("SELECT * FROM activity LIMIT 1;"))
     res = db_dict_cursor.fetchone()
-    assert res["type"] == ActivityType.TRANSACTION_HISTORY.name
+    assert res["type"] == ActivityType.TX_HISTORY.name
     assert res["datetime"].replace(tzinfo=timezone.utc) == now  # Note that timestamps are a naive
     assert res["activity_identifier"] == activity_identifier
     assert res["associated_value"] == "42"
