@@ -2,14 +2,16 @@ import uuid
 
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Generator
+from unittest import mock
 
+import psycopg2
 import pytest
 
 from cosmos_message_lib.connection import get_connection_and_exchange
 from cosmos_message_lib.enums import ActivityType
 from cosmos_message_lib.producer import send_message
 from cosmos_message_lib.schemas import ActivitySchema
-from kombu import BrokerConnection, Exchange
+from kombu import BrokerConnection, Exchange, Message
 from psycopg2 import sql
 from psycopg2.pool import SimpleConnectionPool
 
@@ -100,3 +102,52 @@ def test_consumer(
     assert res["activity_identifier"] == activity_identifier
     assert res["associated_value"] == "42"
     assert res["data"] == {"some": "data", "such": "wow"}
+
+
+def test_consumer_bad_data_rejected() -> None:
+    mock_pg_conn_pool = mock.MagicMock()
+    mock_conn = mock.MagicMock()
+    mock_pg_conn_pool.getconn.return_value = mock_conn
+    mock_rabbit_conn = mock.MagicMock()
+    mock_rabbit_exchange = mock.MagicMock()
+    consumer = ActivityConsumer(
+        mock_rabbit_conn, mock_rabbit_exchange, mock_pg_conn_pool, queue_name="queue-name", routing_key="routing-key"
+    )
+    mock_message = mock.MagicMock(spec=Message)
+    consumer.on_message({"some": "bad data"}, mock_message)
+    mock_message.reject.assert_called_once()
+
+
+def test_consumer_db_problem_requeued() -> None:
+    mock_pg_conn_pool = mock.MagicMock()
+    mock_conn = mock.MagicMock()
+    mock_pg_conn_pool.getconn.return_value.__enter__.return_value = mock_conn
+    mock_cursor = mock.MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.execute.side_effect = psycopg2.Error("Boom")
+    mock_rabbit_conn = mock.MagicMock()
+    mock_rabbit_exchange = mock.MagicMock()
+    consumer = ActivityConsumer(
+        mock_rabbit_conn, mock_rabbit_exchange, mock_pg_conn_pool, queue_name="queue-name", routing_key="routing-key"
+    )
+    mock_message = mock.MagicMock(spec=Message)
+    data = ActivitySchema(
+        **{
+            "type": ActivityType.TX_HISTORY,
+            "datetime": datetime.now(tz=timezone.utc),
+            "underlying_datetime": datetime.now(tz=timezone.utc),
+            "summary": "Headline!",
+            "reasons": ["a reason", "another reason"],
+            "activity_identifier": "a_id",
+            "user_id": str(uuid.uuid4()),
+            "associated_value": "42",
+            "retailer": "asos",
+            "campaigns": ["ASOS_EXTRA"],
+            "data": {
+                "some": "data",
+                "such": "wow",
+            },
+        }
+    ).dict()
+    consumer.on_message(data, mock_message)
+    mock_message.requeue.assert_called_once()
