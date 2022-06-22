@@ -62,6 +62,9 @@ class ActivityConsumer(AbstractMessageConsumer):
                     )
                     conn.commit()
                     logger.debug("Persisted %s activity with id %s", activity.type, activity.id)
+                except psycopg2.Error:
+                    logger.exception("Problem when persiting data. Requeuing...")
+                    message.requeue()
                 finally:
                     self.pg_conn_pool.putconn(conn)
 
