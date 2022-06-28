@@ -62,7 +62,11 @@ def run_migrations_online() -> None:
     if configuration is None:
         raise ValueError("empty configuration.")
 
-    configuration["sqlalchemy.url"] = settings.DATABASE_URI
+    cmd_line_dsn = context.get_x_argument(as_dictionary=True).get("db_dsn")
+    if cmd_line_dsn:
+        configuration["sqlalchemy.url"] = cmd_line_dsn
+    elif not configuration.get("sqlalchemy.url"):  # allows sqla url to be set in another config context
+        configuration["sqlalchemy.url"] = settings.DATABASE_URI
 
     connectable = engine_from_config(
         configuration,
