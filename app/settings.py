@@ -10,6 +10,8 @@ env.read_env()
 
 DATABASE_URI = env("DATABASE_URI").format(env("DATABASE_NAME", "hubble"))
 DATABASE_URI = f"{DATABASE_URI}_test" if any("pytest" in sv for sv in sys.argv) else DATABASE_URI
+PG_CONNECTION_POOLING = env.bool("PG_CONNECTION_POOLING", True)
+
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_ENV = env("SENTRY_ENV", None)
 SENTRY_TRACES_SAMPLE_RATE = env.float("SENTRY_TRACES_SAMPLE_RATE", 0.0)

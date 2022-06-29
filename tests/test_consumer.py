@@ -47,7 +47,6 @@ def fixture_consumer(
     activity_consumer = ActivityConsumer(
         rmq_conn,
         exchange,
-        pg_conn_pool,
         queue_name=f"{settings.MESSAGE_QUEUE_NAME}-test",
         routing_key=settings.MESSAGE_ROUTING_KEY,
     )
@@ -111,7 +110,7 @@ def test_consumer_bad_data_rejected() -> None:
     mock_rabbit_conn = mock.MagicMock()
     mock_rabbit_exchange = mock.MagicMock()
     consumer = ActivityConsumer(
-        mock_rabbit_conn, mock_rabbit_exchange, mock_pg_conn_pool, queue_name="queue-name", routing_key="routing-key"
+        mock_rabbit_conn, mock_rabbit_exchange, queue_name="queue-name", routing_key="routing-key"
     )
     mock_message = mock.MagicMock(spec=Message)
     consumer.on_message({"some": "bad data"}, mock_message)
@@ -121,15 +120,18 @@ def test_consumer_bad_data_rejected() -> None:
 def test_consumer_db_problem_requeued() -> None:
     mock_pg_conn_pool = mock.MagicMock()
     mock_conn = mock.MagicMock()
-    mock_pg_conn_pool.getconn.return_value.__enter__.return_value = mock_conn
+    mock_pg_conn_pool.getconn.return_value = mock_conn
     mock_cursor = mock.MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
     mock_cursor.execute.side_effect = psycopg2.Error("Boom")
     mock_rabbit_conn = mock.MagicMock()
     mock_rabbit_exchange = mock.MagicMock()
     consumer = ActivityConsumer(
-        mock_rabbit_conn, mock_rabbit_exchange, mock_pg_conn_pool, queue_name="queue-name", routing_key="routing-key"
+        mock_rabbit_conn, mock_rabbit_exchange, queue_name="queue-name", routing_key="routing-key"
     )
+    mock.patch.object(consumer, "pg_conn_pool", mock_pg_conn_pool)
+
+    consumer._pg_conn_pool = mock_pg_conn_pool  # pylint: disable=protected-access
     mock_message = mock.MagicMock(spec=Message)
     data = ActivitySchema(
         **{
