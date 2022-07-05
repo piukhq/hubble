@@ -7,11 +7,8 @@ from unittest import mock
 import psycopg2
 import pytest
 
-from cosmos_message_lib.connection import get_connection_and_exchange
-from cosmos_message_lib.enums import ActivityType
-from cosmos_message_lib.producer import send_message
-from cosmos_message_lib.schemas import ActivitySchema
-from kombu import BrokerConnection, Exchange, Message
+from cosmos_message_lib import ActivitySchema, get_connection_and_exchange, send_message
+from kombu import Connection, Exchange, Message
 from psycopg2 import sql
 from psycopg2.pool import SimpleConnectionPool
 
@@ -41,7 +38,7 @@ def pg_conn_pool() -> SimpleConnectionPool:
 
 @pytest.fixture(name="consumer")
 def fixture_consumer(
-    connection_and_exchange: tuple[BrokerConnection, Exchange], pg_conn_pool: SimpleConnectionPool
+    connection_and_exchange: tuple[Connection, Exchange], pg_conn_pool: SimpleConnectionPool
 ) -> Generator:
     rmq_conn, exchange = connection_and_exchange
     activity_consumer = ActivityConsumer(
@@ -59,17 +56,17 @@ def fixture_consumer(
 
 def test_consumer(
     consumer: ActivityConsumer,
-    connection_and_exchange: tuple[BrokerConnection, Exchange],
+    connection_and_exchange: tuple[Connection, Exchange],
     db_dict_cursor: "cursor",
 ) -> None:
     rmq_conn, exchange = connection_and_exchange
-
+    activity_type = "TX_HISTORY"
     now = datetime.now(tz=timezone.utc)
     yesterday = now - timedelta(days=1)
     activity_identifier, user_id = str(uuid.uuid4()), str(uuid.uuid4())
     data = ActivitySchema(
         **{
-            "type": ActivityType.TX_HISTORY,
+            "type": activity_type,
             "datetime": now,
             "underlying_datetime": yesterday,
             "summary": "Headline!",
@@ -96,7 +93,7 @@ def test_consumer(
 
     db_dict_cursor.execute(sql.SQL("SELECT * FROM activity LIMIT 1;"))
     res = db_dict_cursor.fetchone()
-    assert res["type"] == ActivityType.TX_HISTORY.name
+    assert res["type"] == activity_type
     assert res["datetime"].replace(tzinfo=timezone.utc) == now  # Note that timestamps are a naive
     assert res["activity_identifier"] == activity_identifier
     assert res["associated_value"] == "42"
@@ -135,7 +132,7 @@ def test_consumer_db_problem_requeued() -> None:
     mock_message = mock.MagicMock(spec=Message)
     data = ActivitySchema(
         **{
-            "type": ActivityType.TX_HISTORY,
+            "type": "TX_HISTORY",
             "datetime": datetime.now(tz=timezone.utc),
             "underlying_datetime": datetime.now(tz=timezone.utc),
             "summary": "Headline!",
