@@ -8,7 +8,7 @@ from psycopg2.extensions import make_dsn, parse_dsn
 from sqlalchemy.engine import create_engine
 
 from app.db.models import Base
-from app.settings import DATABASE_URI
+from app.settings import DATABASE_URI, PG_CONNECT_ARGS
 
 if TYPE_CHECKING:
     from psycopg2 import connection, cursor
@@ -39,7 +39,7 @@ def setup_db() -> Generator:
 
 @pytest.fixture(scope="session", autouse=True)
 def db_engine() -> "Engine":
-    return create_engine(DATABASE_URI)
+    return create_engine(DATABASE_URI, connect_args=PG_CONNECT_ARGS)
 
 
 @pytest.fixture(scope="function", autouse=True)
