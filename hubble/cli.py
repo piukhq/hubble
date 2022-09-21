@@ -5,9 +5,9 @@ import typer
 
 from cosmos_message_lib.connection import get_connection_and_exchange
 
-from app import settings
-from app.messaging.consumer import ActivityConsumer
-from app.version import __version__
+from hubble import settings
+from hubble.messaging.consumer import ActivityConsumer
+from hubble.version import __version__
 
 cli = typer.Typer()
 logger = logging.getLogger(__name__)

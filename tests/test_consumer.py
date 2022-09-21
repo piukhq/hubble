@@ -12,8 +12,8 @@ from kombu import Connection, Exchange, Message
 from psycopg2 import sql
 from psycopg2.pool import SimpleConnectionPool
 
-from app import settings
-from app.messaging.consumer import ActivityConsumer
+from hubble import settings
+from hubble.messaging.consumer import ActivityConsumer
 
 if TYPE_CHECKING:
     from psycopg2 import cursor

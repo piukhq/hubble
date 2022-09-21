@@ -7,8 +7,8 @@ from psycopg2 import connect, extensions, sql
 from psycopg2.extensions import make_dsn, parse_dsn
 from sqlalchemy.engine import create_engine
 
-from app.db.models import Base
-from app.settings import DATABASE_URI
+from hubble.db.models import Base
+from hubble.settings import DATABASE_URI
 
 if TYPE_CHECKING:
     from psycopg2 import connection, cursor

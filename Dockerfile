@@ -6,4 +6,4 @@ RUN pipenv install --deploy --system --ignore-pipfile
 
 ENV PROMETHEUS_MULTIPROC_DIR=/dev/shm
 ENTRYPOINT [ "linkerd-await", "--" ]
-CMD [ "python", "-m", "app.cli", "activity-consumer" ]
+CMD [ "python", "-m", "hubble.cli", "activity-consumer" ]
