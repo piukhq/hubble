@@ -9,7 +9,7 @@ from cosmos_message_lib.schemas import ActivitySchema
 from psycopg2.extras import Json
 from psycopg2.pool import SimpleConnectionPool
 
-from app import settings
+from hubble import settings
 
 if TYPE_CHECKING:
     from kombu import Connection, Exchange

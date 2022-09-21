@@ -32,9 +32,9 @@ dictConfig(
         "disable_existing_loggers": False,
         "formatters": {
             "brief": {"format": "%(levelname)s:     %(asctime)s - %(message)s"},
-            "console": {"()": "app.reporting.ConsoleFormatter"},
-            "detailed": {"()": "app.reporting.ConsoleFormatter"},
-            "json": {"()": "app.reporting.JSONFormatter"},
+            "console": {"()": "hubble.reporting.ConsoleFormatter"},
+            "detailed": {"()": "hubble.reporting.ConsoleFormatter"},
+            "json": {"()": "hubble.reporting.JSONFormatter"},
         },
         "handlers": {
             "stderr": {
