@@ -4,9 +4,9 @@ BPL activities repository and messaging
 
 ## Development setup
 
-- `$ pipenv install --dev`
+- `$ poetry install`
 - `postgres=# CREATE DATABASE hubble;`
-- `$ pipenv run alembic upgrade head`
+- `$ poetry run alembic upgrade head`
 - create a `.env` file in the root directory
 
 Example:
@@ -19,4 +19,4 @@ ROOT_LOG_LEVEL=DEBUG
 LOG_FORMATTER=json
 ```
 
-- `$ pipenv run python -m app.cli activity-consumer`
+- `$ poetry run python -m hubble.cli activity-consumer`
