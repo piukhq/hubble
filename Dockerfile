@@ -14,7 +14,6 @@ ARG wheel=hubble-*-py3-none-any.whl
 COPY --from=build /src/alembic/ ./alembic/
 COPY --from=build /src/alembic.ini .
 COPY --from=build /src/dist/$wheel .
-# gcc required for hiredis
 RUN pip install $wheel && rm $wheel
 ENV PROMETHEUS_MULTIPROC_DIR=/dev/shm
 ENTRYPOINT [ "linkerd-await", "--" ]
