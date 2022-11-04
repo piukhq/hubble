@@ -54,7 +54,7 @@ def fixture_consumer(
     activity_consumer.queue.delete()
 
 
-def test_consumer(
+def test_consumer_single(
     consumer: ActivityConsumer,
     connection_and_exchange: tuple[Connection, Exchange],
     db_dict_cursor: "cursor",
@@ -100,6 +100,47 @@ def test_consumer(
     assert res["data"] == {"some": "data", "such": "wow"}
 
 
+def test_consumer_multiple_list(
+    consumer: ActivityConsumer,
+    connection_and_exchange: tuple[Connection, Exchange],
+    db_dict_cursor: "cursor",
+) -> None:
+    rmq_conn, exchange = connection_and_exchange
+    activity_type = "TX_HISTORY"
+    now = datetime.now(tz=timezone.utc)
+    yesterday = now - timedelta(days=1)
+    activity_identifier, user_id = str(uuid.uuid4()), str(uuid.uuid4())
+    data = [
+        ActivitySchema(
+            **{
+                "type": activity_type,
+                "datetime": now,
+                "underlying_datetime": yesterday,
+                "summary": "Headline!",
+                "reasons": ["a reason", "another reason"],
+                "activity_identifier": activity_identifier,
+                "user_id": user_id,
+                "associated_value": "42",
+                "retailer": "asos",
+                "campaigns": ["ASOS_EXTRA"],
+                "data": {
+                    "some": "data",
+                    "such": "wow",
+                },
+            }
+        ).dict()
+        for _ in range(10)
+    ]
+
+    send_message(rmq_conn, exchange, data, routing_key="activity.random")
+    for _ in consumer.consume(limit=1):
+        pass
+
+    db_dict_cursor.execute(sql.SQL("SELECT count(1) FROM activity;"))
+    res = db_dict_cursor.fetchone()
+    assert res == [10]
+
+
 def test_consumer_bad_data_rejected() -> None:
     mock_pg_conn_pool = mock.MagicMock()
     mock_conn = mock.MagicMock()
@@ -114,13 +155,13 @@ def test_consumer_bad_data_rejected() -> None:
     mock_message.reject.assert_called_once()
 
 
-def test_consumer_db_problem_requeued() -> None:
+@mock.patch("hubble.messaging.consumer.execute_batch", side_effect=psycopg2.Error("Boom"))
+def test_consumer_db_problem_requeued(mock_execute_batch: mock.MagicMock) -> None:  # pylint: disable=unused-argument
     mock_pg_conn_pool = mock.MagicMock()
     mock_conn = mock.MagicMock()
     mock_pg_conn_pool.getconn.return_value = mock_conn
     mock_cursor = mock.MagicMock()
     mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-    mock_cursor.execute.side_effect = psycopg2.Error("Boom")
     mock_rabbit_conn = mock.MagicMock()
     mock_rabbit_exchange = mock.MagicMock()
     consumer = ActivityConsumer(

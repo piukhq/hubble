@@ -6,7 +6,7 @@ import psycopg2
 
 from cosmos_message_lib.consumer import AbstractMessageConsumer
 from cosmos_message_lib.schemas import ActivitySchema
-from psycopg2.extras import Json
+from psycopg2.extras import Json, execute_batch
 from psycopg2.pool import SimpleConnectionPool
 
 from hubble import settings
@@ -43,9 +43,13 @@ class ActivityConsumer(AbstractMessageConsumer):
             return self._pg_conn_pool.getconn()
         return psycopg2.connect(settings.DATABASE_URI)
 
-    def on_message(self, body: dict, message: "Message") -> None:
+    def on_message(self, body: dict | list[dict], message: "Message") -> None:
+        activities: list[ActivitySchema] = []
         try:
-            activity = ActivitySchema(**body)
+            if isinstance(body, list):
+                activities = [ActivitySchema(**data).dict() for data in body]
+            else:
+                activities = [ActivitySchema(**body).dict()]
         except Exception:  # pylint: disable=broad-except
             logger.exception("Could not consume message %s\nBody:\n%s", message, body)
             message.reject()
@@ -53,8 +57,9 @@ class ActivityConsumer(AbstractMessageConsumer):
             conn = self.get_pg_conn()
             try:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        "INSERT INTO activity "
+                    execute_batch(
+                        cur=cur,
+                        sql="INSERT INTO activity "
                         "VALUES "
                         "("
                         "%(id)s, "
@@ -70,18 +75,19 @@ class ActivityConsumer(AbstractMessageConsumer):
                         "%(campaigns)s, "
                         "%(data)s"
                         ");",
-                        activity.dict(),
+                        argslist=activities,
                     )
-                    conn.commit()
-                logger.debug("Persisted %s activity with id %s", activity.type, activity.id)
+
             except psycopg2.Error as ex:
                 logger.exception("Problem when persiting data. Requeuing...", exc_info=ex)
                 conn.rollback()
                 message.requeue()
+            else:
+                conn.commit()
+                message.ack()
+                logger.debug("Persisted %s activity objects", len(activities))
             finally:
                 if self._pg_pooling:
                     self._pg_conn_pool.putconn(conn)
                 else:
                     conn.close()
-
-            message.ack()
