@@ -68,6 +68,10 @@ def run_migrations_online() -> None:
     elif not configuration.get("sqlalchemy.url"):  # allows sqla url to be set in another config context
         configuration["sqlalchemy.url"] = settings.DATABASE_URI
 
+    if "+psycopg" not in configuration["sqlalchemy.url"]:
+        base, info = configuration["sqlalchemy.url"].split("://")
+        configuration["sqlalchemy.url"] = f"{base}+psycopg://{info}"
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

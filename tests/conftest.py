@@ -1,28 +1,28 @@
 from collections.abc import Generator
 from typing import TYPE_CHECKING
 
-import psycopg2
 import pytest
 
-from psycopg2 import connect, extensions, sql
-from psycopg2.extensions import make_dsn, parse_dsn
-from sqlalchemy.engine import create_engine
+from psycopg import connect, sql
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
+from psycopg.rows import dict_row
+from sqlalchemy import create_engine
 
 from hubble.db.models import Base
 from hubble.settings import DATABASE_URI
 
 if TYPE_CHECKING:
-    from psycopg2 import connection, cursor
+    from psycopg import Connection, Cursor
+    from psycopg.rows import DictRow
     from sqlalchemy.engine import Engine
 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db() -> Generator:
-    conn_args = parse_dsn(DATABASE_URI)
+    conn_args = conninfo_to_dict(DATABASE_URI)
     db_name = conn_args.pop("dbname")
     conn_args.update({"dbname": "postgres"})
-    conn = connect(make_dsn(**conn_args))
-    conn.set_isolation_level(extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+    conn = connect(make_conninfo(**conn_args), autocommit=True)
     cursor = conn.cursor()
 
     if not db_name.endswith("_test"):
@@ -40,7 +40,8 @@ def setup_db() -> Generator:
 
 @pytest.fixture(scope="session", autouse=True)
 def db_engine() -> "Engine":
-    return create_engine(DATABASE_URI)
+    base, info = DATABASE_URI.split("://")
+    return create_engine(f"{base}+psycopg://{info}")
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -55,15 +56,15 @@ def setup_tables(db_engine: "Engine") -> Generator:
 
 
 @pytest.fixture(scope="function")
-def psycopg2_connection() -> Generator:
-    conn = connect(DATABASE_URI)
+def psycopg_connection() -> Generator["Connection[DictRow]", None, None]:
+    conn = connect(DATABASE_URI, row_factory=dict_row)
     yield conn
     conn.commit()
     conn.close()
 
 
 @pytest.fixture(scope="function")
-def db_dict_cursor(psycopg2_connection: "connection") -> "cursor":
-    cursor = psycopg2_connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+def db_dict_cursor(psycopg_connection: "Connection[DictRow]") -> Generator["Cursor[DictRow]", None, None]:
+    cursor = psycopg_connection.cursor()
     yield cursor
     cursor.close()

@@ -30,7 +30,7 @@ class JSONFormatter(logging.Formatter):
 
 class ConsoleFormatter(logging.Formatter):
     # noinspection PyMissingConstructor
-    def __init__(self) -> None:  # pylint: disable=super-init-not-called
+    def __init__(self) -> None:
         pass
 
     @staticmethod
