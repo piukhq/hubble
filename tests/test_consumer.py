@@ -1,7 +1,8 @@
 import uuid
 
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Generator
+from collections.abc import Generator
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import psycopg2
@@ -61,7 +62,7 @@ def test_consumer_single(
 ) -> None:
     rmq_conn, exchange = connection_and_exchange
     activity_type = "TX_HISTORY"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     yesterday = now - timedelta(days=1)
     activity_identifier, user_id = str(uuid.uuid4()), str(uuid.uuid4())
     data = ActivitySchema(
@@ -94,7 +95,7 @@ def test_consumer_single(
     db_dict_cursor.execute(sql.SQL("SELECT * FROM activity LIMIT 1;"))
     res = db_dict_cursor.fetchone()
     assert res["type"] == activity_type
-    assert res["datetime"].replace(tzinfo=timezone.utc) == now  # Note that timestamps are a naive
+    assert res["datetime"].replace(tzinfo=UTC) == now  # Note that timestamps are a naive
     assert res["activity_identifier"] == activity_identifier
     assert res["associated_value"] == "42"
     assert res["data"] == {"some": "data", "such": "wow"}
@@ -107,7 +108,7 @@ def test_consumer_multiple_list(
 ) -> None:
     rmq_conn, exchange = connection_and_exchange
     activity_type = "TX_HISTORY"
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     yesterday = now - timedelta(days=1)
     activity_identifier, user_id = str(uuid.uuid4()), str(uuid.uuid4())
     data = [
@@ -174,8 +175,8 @@ def test_consumer_db_problem_requeued(mock_execute_batch: mock.MagicMock) -> Non
     data = ActivitySchema(
         **{
             "type": "TX_HISTORY",
-            "datetime": datetime.now(tz=timezone.utc),
-            "underlying_datetime": datetime.now(tz=timezone.utc),
+            "datetime": datetime.now(tz=UTC),
+            "underlying_datetime": datetime.now(tz=UTC),
             "summary": "Headline!",
             "reasons": ["a reason", "another reason"],
             "activity_identifier": "a_id",

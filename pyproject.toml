@@ -13,7 +13,7 @@ default = false
 secondary = false
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 SQLAlchemy = "^1.4.41"
 alembic = "^1.8.1"
 psycopg2-binary = "^2.9.3"
@@ -27,13 +27,14 @@ cosmos-message-lib = {version = "^1.3.0", source = "bink-pypi"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.8.0"
-pylint = "^2.15.3"
-mypy = "^0.971"
+mypy = "^1.0.1"
 xenon = "^0.9.0"
 isort = "^5.10.1"
 pytest-cov = "^3.0.0"
 pytest = "^7.1.3"
-pylint-pytest = "^1.1.2"
+refurb = "^1.13.0"
+ruff = "^0.0.252"
+ipython = "^8.10.0"
 
 [tool.poetry.scripts]
 hubble = 'hubble.cli:cli'
@@ -62,28 +63,6 @@ plugins = [
     "sqlalchemy.ext.mypy.plugin",
 ]
 
-[tool.pylint.MASTER]
-load-plugins=[
-    "pylint_pytest",
-    "pylint.extensions.mccabe"
-]
-
-[tool.pylint.messages_control]
-max-line-length = 120
-disable = [
-    "logging-fstring-interpolation",
-    "missing-module-docstring",
-    "missing-function-docstring",
-    "missing-class-docstring",
-    "too-few-public-methods",
-    "consider-using-f-string",
-    "duplicate-code", # pylint definition of "duplicate" is way too loose (ex: fastapi route definitions are flagged).
-]
-good-names=["k", "v", "i", "q", "fn", "ex", "dt", "tz"]
-extension-pkg-whitelist=[
-    "pydantic",
-]
-
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
@@ -95,3 +74,54 @@ files = ['hubble/version.py']
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
+
+
+[tool.ruff]
+line-length = 120
+show-source = true
+target-version = "py311"
+select = [
+    "F",    # Pyflakes (F)
+    "E", 
+    "W",    # pycodestyle (E, W)
+    "C90",  # mccabe (C90)
+    # isort (I)
+    # pydocstyle (D)
+    "UP",   # pyupgrade (UP)
+    "N",    # pep8-naming (N)
+    "YTT",  # flake8-2020 (YTT)
+    "ANN",  # flake8-annotations (ANN)
+    "S",    # flake8-bandit (S)
+    "BLE",  # flake8-blind-except (BLE)
+    # flake8-boolean-trap (FBT)
+    "B",    # flake8-bugbear (B)
+    "A",    # flake8-builtins (A)
+    "C4",   # flake8-comprehensions (C4)
+    "T10",  # flake8-debugger (T10)
+    # flake8-errmsg (EM)
+    "ICN",  # flake8-import-conventions (ICN)
+    "T20",  # flake8-print (T20)
+    # "PT",   # flake8-pytest-style (PT)
+    "Q",    # flake8-quotes (Q)
+    # flake8-return (RET)
+    "SIM",  # flake8-simplify (SIM)
+    "TID",  # flake8-tidy-imports (TID)
+    "ARG",  # flake8-unused-arguments (ARG)
+    "DTZ",  # flake8-datetimez (DTZ)
+    # "ERA",  # eradicate (ERA) until we can remove commented out code this has to stay deactivated
+    # pandas-vet (PD)
+    # pygrep-hooks (PGH)
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",  # Pylint (PLC, PLE, PLR, PLW)
+    "RUF",  # Ruff-specific rules (RUF)
+]
+ignore = [
+    "ANN101", 
+    "B008"
+]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101", "ARG001"]
+"hubble/db/models.py" = ["A003"]
