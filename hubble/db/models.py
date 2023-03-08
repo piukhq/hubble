@@ -1,11 +1,14 @@
-from typing import Any
+from datetime import datetime as dt
+from uuid import UUID
 
-from sqlalchemy import Column, DateTime, String, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import String, text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-Base: Any = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 utc_timestamp_sql = text("TIMEZONE('utc', CURRENT_TIMESTAMP)")
 
@@ -13,23 +16,20 @@ utc_timestamp_sql = text("TIMEZONE('utc', CURRENT_TIMESTAMP)")
 class Activity(Base):
     __tablename__ = "activity"
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
-    type = Column(String, index=True, nullable=False)
-    datetime = Column(
-        DateTime, index=True, nullable=False, doc="The time at which this activity happened on the publisher side"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    type: Mapped[str] = mapped_column(index=True, nullable=False)
+    datetime: Mapped[dt] = mapped_column(
+        index=True, nullable=False, doc="The time at which this activity happened on the publisher side"
     )
-    underlying_datetime = Column(
-        DateTime,
-        index=True,
-        nullable=False,
-        doc="Timestamp associated with the underlying object e.g. transaction timestamp",
+    underlying_datetime: Mapped[dt] = mapped_column(
+        index=True, nullable=False, doc="Timestamp associated with the underlying object e.g. transaction timestamp"
     )
-    summary = Column(String, index=True, nullable=False)
-    reasons = Column(ARRAY(String), index=True, nullable=False)
-    activity_identifier = Column(String, index=True, nullable=False)
-    user_id = Column(String, index=True, nullable=False)
-    associated_value = Column(String, index=True, nullable=False)
-    retailer = Column(String, index=True, nullable=False)
-    campaigns = Column(ARRAY(String), nullable=False, index=True)
-    data = Column(MutableDict.as_mutable(JSONB), server_default=text("'{}'::jsonb"), nullable=False)
-    created_at = Column(DateTime, server_default=utc_timestamp_sql, index=True, nullable=False)
+    summary: Mapped[str] = mapped_column(index=True, nullable=False)
+    reasons: Mapped[list[str]] = mapped_column(ARRAY(String), index=True, nullable=False)
+    activity_identifier: Mapped[str] = mapped_column(index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(index=True, nullable=False)
+    associated_value: Mapped[str] = mapped_column(index=True, nullable=False)
+    retailer: Mapped[str] = mapped_column(index=True, nullable=False)
+    campaigns: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, index=True)
+    data: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
+    created_at: Mapped[dt] = mapped_column(server_default=utc_timestamp_sql, index=True, nullable=False)

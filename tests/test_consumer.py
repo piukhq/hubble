@@ -5,19 +5,20 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest import mock
 
-import psycopg2
+import psycopg
 import pytest
 
 from cosmos_message_lib import ActivitySchema, get_connection_and_exchange, send_message
 from kombu import Connection, Exchange, Message
-from psycopg2 import sql
-from psycopg2.pool import SimpleConnectionPool
+from psycopg import sql
+from psycopg_pool import ConnectionPool
 
 from hubble import settings
 from hubble.messaging.consumer import ActivityConsumer
 
 if TYPE_CHECKING:
-    from psycopg2 import cursor
+    from psycopg import Cursor
+    from psycopg.rows import DictRow
 
 
 @pytest.fixture(name="connection_and_exchange", scope="module")
@@ -32,15 +33,13 @@ def fixture_connection_and_exchange() -> Generator:
     rmq_conn.release()
 
 
-@pytest.fixture
-def pg_conn_pool() -> SimpleConnectionPool:
-    return SimpleConnectionPool(dsn=settings.DATABASE_URI, minconn=1, maxconn=5)
+@pytest.fixture()
+def pg_conn_pool() -> ConnectionPool:
+    return ConnectionPool(settings.DATABASE_URI, min_size=1, max_size=5)
 
 
 @pytest.fixture(name="consumer")
-def fixture_consumer(
-    connection_and_exchange: tuple[Connection, Exchange], pg_conn_pool: SimpleConnectionPool
-) -> Generator:
+def fixture_consumer(connection_and_exchange: tuple[Connection, Exchange], pg_conn_pool: ConnectionPool) -> Generator:
     rmq_conn, exchange = connection_and_exchange
     activity_consumer = ActivityConsumer(
         rmq_conn,
@@ -58,7 +57,7 @@ def fixture_consumer(
 def test_consumer_single(
     consumer: ActivityConsumer,
     connection_and_exchange: tuple[Connection, Exchange],
-    db_dict_cursor: "cursor",
+    db_dict_cursor: "Cursor[DictRow]",
 ) -> None:
     rmq_conn, exchange = connection_and_exchange
     activity_type = "TX_HISTORY"
@@ -89,11 +88,14 @@ def test_consumer_single(
         pass
 
     db_dict_cursor.execute(sql.SQL("SELECT count(1) FROM activity;"))
-    res = db_dict_cursor.fetchone()
-    assert res == [1]
+
+    assert (res := db_dict_cursor.fetchone())
+    assert res.get("count") == 1
 
     db_dict_cursor.execute(sql.SQL("SELECT * FROM activity LIMIT 1;"))
     res = db_dict_cursor.fetchone()
+
+    assert res
     assert res["type"] == activity_type
     assert res["datetime"].replace(tzinfo=UTC) == now  # Note that timestamps are a naive
     assert res["activity_identifier"] == activity_identifier
@@ -104,7 +106,7 @@ def test_consumer_single(
 def test_consumer_multiple_list(
     consumer: ActivityConsumer,
     connection_and_exchange: tuple[Connection, Exchange],
-    db_dict_cursor: "cursor",
+    db_dict_cursor: "Cursor[DictRow]",
 ) -> None:
     rmq_conn, exchange = connection_and_exchange
     activity_type = "TX_HISTORY"
@@ -138,8 +140,8 @@ def test_consumer_multiple_list(
         pass
 
     db_dict_cursor.execute(sql.SQL("SELECT count(1) FROM activity;"))
-    res = db_dict_cursor.fetchone()
-    assert res == [10]
+    assert (res := db_dict_cursor.fetchone())
+    assert res.get("count") == 10
 
 
 def test_consumer_bad_data_rejected() -> None:
@@ -156,12 +158,12 @@ def test_consumer_bad_data_rejected() -> None:
     mock_message.reject.assert_called_once()
 
 
-@mock.patch("hubble.messaging.consumer.execute_batch", side_effect=psycopg2.Error("Boom"))
-def test_consumer_db_problem_requeued(mock_execute_batch: mock.MagicMock) -> None:  # pylint: disable=unused-argument
+def test_consumer_db_problem_requeued() -> None:
     mock_pg_conn_pool = mock.MagicMock()
     mock_conn = mock.MagicMock()
     mock_pg_conn_pool.getconn.return_value = mock_conn
     mock_cursor = mock.MagicMock()
+    mock_cursor.executemany.side_effect = psycopg.Error("Boom")
     mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
     mock_rabbit_conn = mock.MagicMock()
     mock_rabbit_exchange = mock.MagicMock()
@@ -170,7 +172,7 @@ def test_consumer_db_problem_requeued(mock_execute_batch: mock.MagicMock) -> Non
     )
     mock.patch.object(consumer, "pg_conn_pool", mock_pg_conn_pool)
 
-    consumer._pg_conn_pool = mock_pg_conn_pool  # pylint: disable=protected-access
+    consumer._pg_conn_pool = mock_pg_conn_pool
     mock_message = mock.MagicMock(spec=Message)
     data = ActivitySchema(
         **{

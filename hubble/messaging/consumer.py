@@ -1,23 +1,22 @@
 import logging
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-import psycopg2
+import psycopg
 
 from cosmos_message_lib.consumer import AbstractMessageConsumer
 from cosmos_message_lib.schemas import ActivitySchema
-from psycopg2.extras import Json, execute_batch
-from psycopg2.pool import SimpleConnectionPool
+from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 
 from hubble import settings
 
 if TYPE_CHECKING:
     from kombu import Connection, Exchange
     from kombu.message import Message
+    from psycopg.connection import Connection as PGConn
 
 logger = logging.getLogger(__name__)
-
-psycopg2.extensions.register_adapter(dict, Json)
 
 
 class ActivityConsumer(AbstractMessageConsumer):
@@ -29,37 +28,41 @@ class ActivityConsumer(AbstractMessageConsumer):
         queue_name: str,
         routing_key: str,
     ) -> None:
+        self._pg_conn_pool: ConnectionPool | None = None
         self._pg_pooling: bool = settings.PG_CONNECTION_POOLING
         logger.info(f"Connection pooling: {self._pg_pooling}")
         if self._pg_pooling:
-            self._pg_conn_pool = SimpleConnectionPool(dsn=settings.DATABASE_URI, minconn=1, maxconn=10)
-        else:
-            self._pg_conn_pool = None
+            self._pg_conn_pool = ConnectionPool(settings.DATABASE_URI, min_size=1, max_size=10)
 
         super().__init__(rmq_conn, exchange, queue_name=queue_name, routing_key=routing_key, use_deadletter=True)
 
-    def get_pg_conn(self) -> Any:  # no type hinting in psycopg2 # noqa: ANN401
-        if self._pg_pooling:
+    @staticmethod
+    def prepare_for_insert(val: ActivitySchema) -> dict:
+        payload = val.dict()
+        payload["data"] = Jsonb(payload["data"])
+        return payload
+
+    def get_pg_conn(self) -> "PGConn":
+        if self._pg_conn_pool:
             return self._pg_conn_pool.getconn()
-        return psycopg2.connect(settings.DATABASE_URI)
+        return psycopg.connect(settings.DATABASE_URI)
 
     def on_message(self, body: dict | list[dict], message: "Message") -> None:
         activities: list[ActivitySchema] = []
         try:
             if isinstance(body, list):
-                activities = [ActivitySchema(**data).dict() for data in body]
+                activities = [self.prepare_for_insert(ActivitySchema(**data)) for data in body]
             else:
-                activities = [ActivitySchema(**body).dict()]
-        except Exception:  # pylint: disable=broad-except
+                activities = [self.prepare_for_insert(ActivitySchema(**body))]
+        except Exception:
             logger.exception("Could not consume message %s\nBody:\n%s", message, body)
             message.reject()
         else:
             conn = self.get_pg_conn()
             try:
                 with conn.cursor() as cur:
-                    execute_batch(
-                        cur=cur,
-                        sql="INSERT INTO activity "
+                    cur.executemany(
+                        "INSERT INTO activity "
                         "VALUES "
                         "("
                         "%(id)s, "
@@ -75,10 +78,10 @@ class ActivityConsumer(AbstractMessageConsumer):
                         "%(campaigns)s, "
                         "%(data)s"
                         ");",
-                        argslist=activities,
+                        activities,
                     )
 
-            except psycopg2.Error as ex:
+            except psycopg.Error as ex:
                 logger.exception("Problem when persiting data. Requeuing...", exc_info=ex)
                 conn.rollback()
                 message.requeue()
@@ -87,7 +90,7 @@ class ActivityConsumer(AbstractMessageConsumer):
                 message.ack()
                 logger.debug("Persisted %s activity objects", len(activities))
             finally:
-                if self._pg_pooling:
+                if self._pg_conn_pool:
                     self._pg_conn_pool.putconn(conn)
                 else:
                     conn.close()
