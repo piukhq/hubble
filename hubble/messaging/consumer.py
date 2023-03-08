@@ -28,7 +28,7 @@ class ActivityConsumer(AbstractMessageConsumer):
         *,
         queue_name: str,
         routing_key: str,
-    ):
+    ) -> None:
         self._pg_pooling: bool = settings.PG_CONNECTION_POOLING
         logger.info(f"Connection pooling: {self._pg_pooling}")
         if self._pg_pooling:
@@ -38,7 +38,7 @@ class ActivityConsumer(AbstractMessageConsumer):
 
         super().__init__(rmq_conn, exchange, queue_name=queue_name, routing_key=routing_key, use_deadletter=True)
 
-    def get_pg_conn(self) -> Any:  # no type hinting in psycopg2
+    def get_pg_conn(self) -> Any:  # no type hinting in psycopg2 # noqa: ANN401
         if self._pg_pooling:
             return self._pg_conn_pool.getconn()
         return psycopg2.connect(settings.DATABASE_URI)
