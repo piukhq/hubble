@@ -35,7 +35,7 @@ def fixture_connection_and_exchange() -> Generator:
 
 @pytest.fixture()
 def pg_conn_pool() -> ConnectionPool:
-    return ConnectionPool(settings.DATABASE_URI, min_size=1, max_size=5)
+    return ConnectionPool(settings.PSYCOPG_URI, min_size=1, max_size=5)
 
 
 @pytest.fixture(name="consumer")

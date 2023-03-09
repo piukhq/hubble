@@ -520,33 +520,6 @@ url = "https://pypi.tools.uksouth.bink.sh/simple"
 reference = "bink-pypi"
 
 [[package]]
-name = "environs"
-version = "9.5.0"
-description = "simplified environment variable parsing"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "environs-9.5.0-py2.py3-none-any.whl", hash = "sha256:1e549569a3de49c05f856f40bce86979e7d5ffbbc4398e7f338574c220189124"},
-    {file = "environs-9.5.0.tar.gz", hash = "sha256:a76307b36fbe856bdca7ee9161e6c466fd7fcffc297109a118c59b54e27e30c9"},
-]
-
-[package.dependencies]
-marshmallow = ">=3.0.0"
-python-dotenv = "*"
-
-[package.extras]
-dev = ["dj-database-url", "dj-email-url", "django-cache-url", "flake8 (==4.0.1)", "flake8-bugbear (==21.9.2)", "mypy (==0.910)", "pre-commit (>=2.4,<3.0)", "pytest", "tox"]
-django = ["dj-database-url", "dj-email-url", "django-cache-url"]
-lint = ["flake8 (==4.0.1)", "flake8-bugbear (==21.9.2)", "mypy (==0.910)", "pre-commit (>=2.4,<3.0)"]
-tests = ["dj-database-url", "dj-email-url", "django-cache-url", "pytest"]
-
-[package.source]
-type = "legacy"
-url = "https://pypi.tools.uksouth.bink.sh/simple"
-reference = "bink-pypi"
-
-[[package]]
 name = "executing"
 version = "1.2.0"
 description = "Get the currently executing AST node of a frame, and other information"
@@ -938,32 +911,6 @@ url = "https://pypi.tools.uksouth.bink.sh/simple"
 reference = "bink-pypi"
 
 [[package]]
-name = "marshmallow"
-version = "3.19.0"
-description = "A lightweight library for converting complex datatypes to and from native Python datatypes."
-category = "main"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "marshmallow-3.19.0-py3-none-any.whl", hash = "sha256:93f0958568da045b0021ec6aeb7ac37c81bfcccbb9a0e7ed8559885070b3a19b"},
-    {file = "marshmallow-3.19.0.tar.gz", hash = "sha256:90032c0fd650ce94b6ec6dc8dfeb0e3ff50c144586462c389b81a07205bedb78"},
-]
-
-[package.dependencies]
-packaging = ">=17.0"
-
-[package.extras]
-dev = ["flake8 (==5.0.4)", "flake8-bugbear (==22.10.25)", "mypy (==0.990)", "pre-commit (>=2.4,<3.0)", "pytest", "pytz", "simplejson", "tox"]
-docs = ["alabaster (==0.7.12)", "autodocsumm (==0.2.9)", "sphinx (==5.3.0)", "sphinx-issues (==3.0.1)", "sphinx-version-warning (==1.1.2)"]
-lint = ["flake8 (==5.0.4)", "flake8-bugbear (==22.10.25)", "mypy (==0.990)", "pre-commit (>=2.4,<3.0)"]
-tests = ["pytest", "pytz", "simplejson"]
-
-[package.source]
-type = "legacy"
-url = "https://pypi.tools.uksouth.bink.sh/simple"
-reference = "bink-pypi"
-
-[[package]]
 name = "matplotlib-inline"
 version = "0.1.6"
 description = "Inline Matplotlib backend for Jupyter"
@@ -1055,7 +1002,7 @@ reference = "bink-pypi"
 name = "packaging"
 version = "23.0"
 description = "Core utilities for Python packages"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1530,19 +1477,16 @@ url = "https://pypi.tools.uksouth.bink.sh/simple"
 reference = "bink-pypi"
 
 [[package]]
-name = "python-dotenv"
-version = "1.0.0"
-description = "Read key-value pairs from a .env file and set them as environment variables"
+name = "python-decouple"
+version = "3.8"
+description = "Strict separation of settings from code."
 category = "main"
 optional = false
-python-versions = ">=3.8"
+python-versions = "*"
 files = [
-    {file = "python-dotenv-1.0.0.tar.gz", hash = "sha256:a8df96034aae6d2d50a4ebe8216326c61c3eb64836776504fcca410e5937a3ba"},
-    {file = "python_dotenv-1.0.0-py3-none-any.whl", hash = "sha256:f5971a9226b701070a4bf2c38c89e5a3f0d64de8debda981d1db98583009122a"},
+    {file = "python-decouple-3.8.tar.gz", hash = "sha256:ba6e2657d4f376ecc46f77a3a615e058d93ba5e465c01bbe57289bfb7cce680f"},
+    {file = "python_decouple-3.8-py3-none-any.whl", hash = "sha256:d0d45340815b25f4de59c974b855bb38d03151d81b037d9e3f463b0c9f8cbd66"},
 ]
-
-[package.extras]
-cli = ["click (>=5.0)"]
 
 [package.source]
 type = "legacy"
@@ -2056,4 +2000,4 @@ reference = "bink-pypi"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "0bfd86e1fd41e4adcbbc44b2e1880c576e4232464684ac09f3fd71a6fd7f129c"
+content-hash = "b44a75632d7ecec68a44425a23dc909fb9c9a8dd815d3f19070692aceee6ab45"

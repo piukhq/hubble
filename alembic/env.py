@@ -1,5 +1,3 @@
-from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
@@ -41,7 +39,7 @@ def run_migrations_offline() -> None:
 
     """
     context.configure(
-        url=settings.DATABASE_URI,
+        url=settings.SQLALCHEMY_URI,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -62,15 +60,10 @@ def run_migrations_online() -> None:
     if configuration is None:
         raise ValueError("empty configuration.")
 
-    cmd_line_dsn = context.get_x_argument(as_dictionary=True).get("db_dsn")
-    if cmd_line_dsn:
+    if cmd_line_dsn := context.get_x_argument(as_dictionary=True).get("db_dsn"):
         configuration["sqlalchemy.url"] = cmd_line_dsn
     elif not configuration.get("sqlalchemy.url"):  # allows sqla url to be set in another config context
-        configuration["sqlalchemy.url"] = settings.DATABASE_URI
-
-    if "+psycopg" not in configuration["sqlalchemy.url"]:
-        base, info = configuration["sqlalchemy.url"].split("://")
-        configuration["sqlalchemy.url"] = f"{base}+psycopg://{info}"
+        configuration["sqlalchemy.url"] = settings.SQLALCHEMY_URI
 
     connectable = engine_from_config(
         configuration,
