@@ -1,12 +1,19 @@
 import logging
+import os
 
 import sentry_sdk
 import typer
 
 from cosmos_message_lib.connection import get_connection_and_exchange
+from prometheus_client import CollectorRegistry
+from prometheus_client import start_http_server as start_prometheus_server
+from prometheus_client import values
+from prometheus_client.multiprocess import MultiProcessCollector
+from rq import Worker
 
-from hubble import settings
+from hubble.config import redis_raw, settings
 from hubble.messaging.consumer import ActivityConsumer
+from hubble.tasks.error_handlers import job_meta_handler
 from hubble.version import __version__
 
 cli = typer.Typer()
@@ -32,6 +39,28 @@ def activity_consumer() -> None:
         queue_name=settings.MESSAGE_QUEUE_NAME,
         routing_key=settings.MESSAGE_ROUTING_KEY,
     ).run()
+
+
+@cli.command()
+def task_worker(burst: bool = False) -> None:  # pragma: no cover
+
+    if settings.ACTIVATE_TASKS_METRICS:
+        # -------- this is the prometheus monkey patch ------- #
+        values.ValueClass = values.MultiProcessValue(os.getppid)
+        # ---------------------------------------------------- #
+        registry = CollectorRegistry()
+        MultiProcessCollector(registry)
+        logger.info("Starting prometheus metrics server...")
+        start_prometheus_server(settings.PROMETHEUS_HTTP_SERVER_PORT, registry=registry)
+
+    worker = Worker(
+        queues=settings.TASK_QUEUES,
+        connection=redis_raw,
+        log_job_description=True,
+        exception_handlers=[job_meta_handler],
+    )
+    logger.info("Starting task worker...")
+    worker.work(burst=burst, with_scheduler=True)
 
 
 @cli.callback()
