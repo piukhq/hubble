@@ -1,7 +1,7 @@
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from hubble import settings
+from hubble.config import settings
 from hubble.db.models import Base
 
 # this is the Alembic Config object, which provides

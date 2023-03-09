@@ -13,7 +13,7 @@ from kombu import Connection, Exchange, Message
 from psycopg import sql
 from psycopg_pool import ConnectionPool
 
-from hubble import settings
+from hubble.config import settings
 from hubble.messaging.consumer import ActivityConsumer
 
 if TYPE_CHECKING:
