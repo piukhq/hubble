@@ -32,7 +32,7 @@ class ActivityConsumer(AbstractMessageConsumer):
         self._pg_pooling: bool = settings.PG_CONNECTION_POOLING
         logger.info(f"Connection pooling: {self._pg_pooling}")
         if self._pg_pooling:
-            self._pg_conn_pool = ConnectionPool(settings.DATABASE_URI, min_size=1, max_size=10)
+            self._pg_conn_pool = ConnectionPool(settings.PSYCOPG_URI, min_size=1, max_size=10)
 
         super().__init__(rmq_conn, exchange, queue_name=queue_name, routing_key=routing_key, use_deadletter=True)
 
@@ -45,7 +45,8 @@ class ActivityConsumer(AbstractMessageConsumer):
     def get_pg_conn(self) -> "PGConn":
         if self._pg_conn_pool:
             return self._pg_conn_pool.getconn()
-        return psycopg.connect(settings.DATABASE_URI)
+
+        return psycopg.connect(settings.PSYCOPG_URI)
 
     def on_message(self, body: dict | list[dict], message: "Message") -> None:
         activities: list[ActivitySchema] = []

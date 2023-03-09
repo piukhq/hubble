@@ -9,7 +9,7 @@ from psycopg.rows import dict_row
 from sqlalchemy import create_engine
 
 from hubble.db.models import Base
-from hubble.settings import DATABASE_URI
+from hubble.settings import PSYCOPG_URI, SQLALCHEMY_URI
 
 if TYPE_CHECKING:
     from psycopg import Connection, Cursor
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db() -> Generator:
-    conn_args = conninfo_to_dict(DATABASE_URI)
+    conn_args = conninfo_to_dict(PSYCOPG_URI)
     db_name = conn_args.pop("dbname")
     conn_args.update({"dbname": "postgres"})
     conn = connect(make_conninfo(**conn_args), autocommit=True)
@@ -40,8 +40,7 @@ def setup_db() -> Generator:
 
 @pytest.fixture(scope="session", autouse=True)
 def db_engine() -> "Engine":
-    base, info = DATABASE_URI.split("://")
-    return create_engine(f"{base}+psycopg://{info}")
+    return create_engine(SQLALCHEMY_URI)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -57,7 +56,7 @@ def setup_tables(db_engine: "Engine") -> Generator:
 
 @pytest.fixture(scope="function")
 def psycopg_connection() -> Generator["Connection[DictRow]", None, None]:
-    conn = connect(DATABASE_URI, row_factory=dict_row)
+    conn = connect(PSYCOPG_URI, row_factory=dict_row)
     yield conn
     conn.commit()
     conn.close()
