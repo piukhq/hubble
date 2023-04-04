@@ -13,6 +13,8 @@ from rq import Worker
 
 from hubble.config import redis_raw, settings
 from hubble.messaging.consumer import ActivityConsumer
+from hubble.scheduled_tasks.scheduler import cron_scheduler as scheduler
+from hubble.scheduled_tasks.task_cleanup import cleanup_old_tasks
 from hubble.tasks.error_handlers import job_meta_handler
 from hubble.version import __version__
 
@@ -61,6 +63,23 @@ def task_worker(burst: bool = False) -> None:  # pragma: no cover
     )
     logger.info("Starting task worker...")
     worker.work(burst=burst, with_scheduler=True)
+
+
+@cli.command()
+def cron_scheduler(
+    task_cleanup: bool = True,
+) -> None:
+
+    logger.info("Initialising scheduler...")
+    if task_cleanup:
+        scheduler.add_job(
+            cleanup_old_tasks,
+            schedule_fn=lambda: settings.TASK_CLEANUP_SCHEDULE,
+            coalesce_jobs=True,
+        )
+
+    logger.info(f"Starting scheduler {cron_scheduler}...")
+    scheduler.run()
 
 
 @cli.callback()
