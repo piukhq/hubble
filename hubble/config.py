@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     ACTIVATE_TASKS_METRICS: bool = True
     PROMETHEUS_HTTP_SERVER_PORT: int = 9100
 
+    REDIS_KEY_PREFIX = "hubble:"
+    TASK_CLEANUP_SCHEDULE: str = "0 1 * * *"
+    TASK_DATA_RETENTION_DAYS: int = 180
+
     class Config:
         case_sensitive = True
         # env var settings priority ie priority 1 will override priority 2:
@@ -105,6 +109,14 @@ class Settings(BaseSettings):
 settings = Settings()
 
 load_settings(settings)
+
+redis = Redis.from_url(
+    settings.REDIS_URL,
+    socket_connect_timeout=3,
+    socket_keepalive=True,
+    retry_on_timeout=False,
+    decode_responses=True,
+)
 
 redis_raw = Redis.from_url(
     settings.REDIS_URL,
