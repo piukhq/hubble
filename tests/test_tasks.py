@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 def test_anonymise_activities(
     db_session: "Session", create_activity: "Callable[..., Activity]", anonymise_activities_task: "RetryTask"
 ) -> None:
-
     task_params = anonymise_activities_task.get_params()
 
     non_releavant_activities = [create_activity(id=uuid4(), type="OTHER") for _ in range(2)]
@@ -47,6 +46,31 @@ def test_anonymise_activities(
         )
         for i in range(4)
     ]
+    releavant_activities.append(
+        create_activity(
+            id=uuid4(),
+            type="EMAIL_EVENT",
+            retailer=task_params["retailer_slug"],
+            associated_value="open",
+            user_id=task_params["account_holder_uuid"],
+            summary="open Mailjet event received",
+            data={
+                "ip": "127.0.0.1",
+                "geo": "EU",
+                "time": 1681396492,
+                "agent": "Smith",
+                "email": task_params["account_holder_email"],
+                "event": "open",
+                "Payload": "",
+                "CustomID": "",
+                "MessageID": 1152921521743153642,
+                "Message_GUID": "835c6b3c-0903-4712-8915-3b0728a58050",
+                "mj_contact_id": 127860768,
+                "customcampaign": "",
+                "mj_campaign_id": 0,
+            },
+        )
+    )
 
     anonymise_activities(anonymise_activities_task.retry_task_id)
 
@@ -59,7 +83,6 @@ def test_anonymise_activities(
             return item["field_name"]
 
         for act in activity_list:
-
             summary = act.summary
             associated_value = act.associated_value
             data = act.data.copy()
@@ -67,22 +90,27 @@ def test_anonymise_activities(
             db_session.refresh(act)
 
             if expect_anon:
-                assert summary != act.summary
-                assert task_params["account_holder_email"] not in act.summary
-                assert task_params["account_holder_uuid"] not in act.summary
-                assert associated_value != act.associated_value
-                assert task_params["account_holder_uuid"] not in act.associated_value
-                assert task_params["account_holder_email"] not in act.associated_value
+                if act.type == "EMAIL_EVENT":
+                    assert summary == act.summary
+                    assert associated_value == act.associated_value
+                    assert task_params["account_holder_email"] not in act.data["email"]
 
-                for old_val, new_val in zip(
-                    sorted(data["fields"], key=get_sorting_key),
-                    sorted(act.data["fields"], key=get_sorting_key),
-                    strict=True,
-                ):
+                else:
+                    assert summary != act.summary
+                    assert task_params["account_holder_email"] not in act.summary
+                    assert task_params["account_holder_uuid"] not in act.summary
+                    assert associated_value != act.associated_value
+                    assert task_params["account_holder_uuid"] not in act.associated_value
+                    assert task_params["account_holder_email"] not in act.associated_value
 
-                    assert old_val["value"] != new_val["value"]
-                    if new_val["field_name"] == "email":
-                        assert task_params["account_holder_email"] not in new_val["value"]
+                    for old_val, new_val in zip(
+                        sorted(data["fields"], key=get_sorting_key),
+                        sorted(act.data["fields"], key=get_sorting_key),
+                        strict=True,
+                    ):
+                        assert old_val["value"] != new_val["value"]
+                        if new_val["field_name"] == "email":
+                            assert task_params["account_holder_email"] not in new_val["value"]
 
             else:
                 assert summary == act.summary
