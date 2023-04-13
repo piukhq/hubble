@@ -18,7 +18,6 @@ from hubble.tasks.prometheus import task_processing_time_callback_fn, tasks_run_
 from . import logger
 
 if TYPE_CHECKING:
-
     from sqlalchemy.orm import Session
 
 
@@ -87,15 +86,27 @@ def _encode_field_values_in_data(account_holder_uuid: str, data: dict) -> dict:
 
 
 def _anonymise_account_request_activity(activity: Activity, account_holder_uuid: str) -> str:
-    activity.summary = _encode_email_in_string(account_holder_uuid, activity.summary)
-    activity.associated_value = _encode_value(account_holder_uuid, activity.associated_value)
-    activity.data = _encode_field_values_in_data(account_holder_uuid, activity.data)
-    flag_modified(activity, "data")
+    match activity.type:
+        case "ACCOUNT_REQUEST":
+            activity.summary = _encode_email_in_string(account_holder_uuid, activity.summary)
+            activity.associated_value = _encode_value(account_holder_uuid, activity.associated_value)
+            activity.data = _encode_field_values_in_data(account_holder_uuid, activity.data)
+            flag_modified(activity, "data")
+
+        case "EMAIL_EVENT":
+            if "email" in activity.data:
+                activity.data["email"] = _encode_value(account_holder_uuid, activity.data["email"])
+                flag_modified(activity, "data")
+
     return str(activity.id)
 
 
 def _get_account_activities(
-    db_session: "Session", retailer_slug: str, account_holder_uuid: str, account_holder_email: str, activity_type: str
+    db_session: "Session",
+    retailer_slug: str,
+    account_holder_uuid: str,
+    account_holder_email: str,
+    activity_types: set[str],
 ) -> "Sequence[Activity]":
     return (
         db_session.execute(
@@ -103,7 +114,7 @@ def _get_account_activities(
             .with_for_update(skip_locked=True)
             .where(
                 Activity.retailer == retailer_slug,
-                Activity.type == activity_type,
+                Activity.type.in_(activity_types),
                 (Activity.associated_value.ilike(account_holder_email)) | (Activity.user_id == account_holder_uuid),
             )
         )
@@ -131,12 +142,11 @@ def anonymise_activities(retry_task: RetryTask, db_session: "Session") -> None:
         task_params["retailer_slug"],
         account_holder_uuid,
         task_params["account_holder_email"],
-        "ACCOUNT_REQUEST",
+        {"ACCOUNT_REQUEST", "EMAIL_EVENT"},
     )
     if updated_activities := [
         _anonymise_account_request_activity(activity, account_holder_uuid) for activity in account_activities
     ]:
-
         db_session.commit()
         logger.info(
             "Successfully anonymised the following activities: %s for account_holder_uuid: %s",
