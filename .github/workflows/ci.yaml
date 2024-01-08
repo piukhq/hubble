@@ -58,7 +58,7 @@ jobs:
           python-version: "3.11"
       - run: pip install poetry
       - run: poetry config virtualenvs.create false
-      - run: poetry config http-basic.bink-pypi 269fdc63-af3d-4eca-8101-8bddc22d6f14 b694b5b1-f97e-49e4-959e-f3c202e3ab91
+      - run: poetry config http-basic.azure jeff ${{ secrets.AZURE_DEVOPS_PAT }}
       - run: poetry install
       - run: alembic upgrade head
       - run: xenon --no-assert --max-average A --max-modules B --max-absolute B .
@@ -86,6 +86,8 @@ jobs:
           password: ${{ secrets.ACR_BINKCORE_PASSWORD }}
       - uses: docker/build-push-action@v4
         with:
+          build-args: |
+            AZURE_DEVOPS_PAT=${{ secrets.AZURE_DEVOPS_PAT }}
           context: .
           push: true
           tags: |
@@ -113,6 +115,8 @@ jobs:
           password: ${{ secrets.ACR_BINKCORE_PASSWORD }}
       - uses: docker/build-push-action@v4
         with:
+          build-args: |
+            AZURE_DEVOPS_PAT=${{ secrets.AZURE_DEVOPS_PAT }}
           context: .
           push: true
           tags: |
