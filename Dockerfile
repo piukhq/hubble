@@ -1,6 +1,7 @@
-FROM ghcr.io/binkhq/python:3.11-poetry as build
+FROM ghcr.io/binkhq/python:3.11 as build
 
 WORKDIR /src
+RUN pip install poetry==1.7.1
 RUN poetry config virtualenvs.create false
 RUN poetry self add poetry-dynamic-versioning[plugin]
 ADD . .
