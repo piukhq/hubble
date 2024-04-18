@@ -17,15 +17,15 @@ priority = "explicit"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-psycopg = {version = "^3.1.8", extras= ["pool", "binary"]}
+psycopg = { version = "^3.1.8", extras = ["pool", "binary"] }
 alembic = "^1.8.1"
-pydantic = {extras = ["dotenv"], version = "^1.10.6"}
+pydantic = { extras = ["dotenv"], version = "^1.10.6" }
 kombu = "^5.2.4"
 typer = "^0.6.1"
 prettyprinter = "^0.18.0"
 sentry-sdk = "^1.9.8"
-cosmos-message-lib = {version = "^1.3.0", source="azure"}
-retry-tasks-lib = {version = "^3.1.0", source="azure"}
+cosmos-message-lib = { version = "^1.3.0", source = "azure" }
+retry-tasks-lib = { version = "^3.1.0", source = "azure" }
 redis = "^4.5.4"
 hiredis = "^2.2.2"
 prometheus-client = "^0.16.0"
@@ -34,10 +34,8 @@ sqlalchemy = "^2.0.25"
 tzdata = "^2023.4"
 
 [tool.poetry.group.dev.dependencies]
-black = "^22.8.0"
 mypy = "^1.0.1"
 xenon = "^0.9.0"
-isort = "^5.10.1"
 pytest-cov = "^3.0.0"
 pytest = "^7.1.3"
 refurb = "^1.13.0"
@@ -67,15 +65,11 @@ disallow_untyped_defs = true
 show_error_codes = true
 warn_unused_ignores = true
 ignore_missing_imports = true
-exclude = "alembic/versions/"
-plugins = [
-    "pydantic.mypy",
-]
+exclude = "hubble/alembic/versions/"
+plugins = ["pydantic.mypy"]
 
 [tool.poetry-dynamic-versioning]
 enable = true
-vcs = "git"
-pattern = '^((?P<epoch>\d+)!)?(?P<base>\d+(\.\d+)*)'
 
 [tool.poetry-dynamic-versioning.substitution]
 files = ['hubble/version.py']
@@ -90,46 +84,43 @@ line-length = 120
 show-source = true
 target-version = "py311"
 select = [
-    "F",    # Pyflakes (F)
+    "F",   # Pyflakes (F)
     "E",
-    "W",    # pycodestyle (E, W)
-    "C90",  # mccabe (C90)
+    "W",   # pycodestyle (E, W)
+    "C90", # mccabe (C90)
     # isort (I)
     # pydocstyle (D)
-    "UP",   # pyupgrade (UP)
-    "N",    # pep8-naming (N)
-    "YTT",  # flake8-2020 (YTT)
-    "ANN",  # flake8-annotations (ANN)
-    "S",    # flake8-bandit (S)
-    "BLE",  # flake8-blind-except (BLE)
+    "UP",  # pyupgrade (UP)
+    "N",   # pep8-naming (N)
+    "YTT", # flake8-2020 (YTT)
+    "ANN", # flake8-annotations (ANN)
+    "S",   # flake8-bandit (S)
+    "BLE", # flake8-blind-except (BLE)
     # flake8-boolean-trap (FBT)
-    "B",    # flake8-bugbear (B)
-    "A",    # flake8-builtins (A)
-    "C4",   # flake8-comprehensions (C4)
-    "T10",  # flake8-debugger (T10)
+    "B",   # flake8-bugbear (B)
+    "A",   # flake8-builtins (A)
+    "C4",  # flake8-comprehensions (C4)
+    "T10", # flake8-debugger (T10)
     # flake8-errmsg (EM)
-    "ICN",  # flake8-import-conventions (ICN)
-    "T20",  # flake8-print (T20)
+    "ICN", # flake8-import-conventions (ICN)
+    "T20", # flake8-print (T20)
     # "PT",   # flake8-pytest-style (PT)
-    "Q",    # flake8-quotes (Q)
+    "Q", # flake8-quotes (Q)
     # flake8-return (RET)
-    "SIM",  # flake8-simplify (SIM)
-    "TID",  # flake8-tidy-imports (TID)
-    "ARG",  # flake8-unused-arguments (ARG)
-    "DTZ",  # flake8-datetimez (DTZ)
-    "ERA",  # eradicate (ERA)
+    "SIM", # flake8-simplify (SIM)
+    "TID", # flake8-tidy-imports (TID)
+    "ARG", # flake8-unused-arguments (ARG)
+    "DTZ", # flake8-datetimez (DTZ)
+    "ERA", # eradicate (ERA)
     # pandas-vet (PD)
     # pygrep-hooks (PGH)
     "PLC",
     "PLE",
     "PLR",
-    "PLW",  # Pylint (PLC, PLE, PLR, PLW)
-    "RUF",  # Ruff-specific rules (RUF)
+    "PLW", # Pylint (PLC, PLE, PLR, PLW)
+    "RUF", # Ruff-specific rules (RUF)
 ]
-ignore = [
-    "ANN101",
-    "ANN102",
-]
+ignore = ["ANN101", "ANN102"]
 
 [tool.ruff.per-file-ignores]
 "tests/*" = ["S101", "ARG001", "PLR2004"]
